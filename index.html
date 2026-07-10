@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Generator — Premium QR Code Generator</title>
+  <meta name="description" content="Generate customizable, premium QR codes with custom colors, embedded logos, and high-resolution downloads instantly.">
+  
+  <!-- Favicon -->
+   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- Background Glow Effects -->
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+  <div class="glow glow-3"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="brand-text">
+          <h1>QR Generator</h1>
+          <p>Create stunning, custom QR codes in seconds</p>
+        </div>
+      </div>
+      <div class="theme-toggle-container">
+        <button id="themeToggle" class="theme-btn" aria-label="Toggle light/dark theme">
+          <i data-lucide="moon" class="dark-icon"></i>
+          <i data-lucide="sun" class="light-icon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <!-- Left Column: Generator Controls -->
+      <section class="controls-card glass-panel">
+        <div class="card-header">
+          <i data-lucide="sliders" class="header-icon"></i>
+          <h2>Generator Settings</h2>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+          <button class="mode-tab active" id="btnBasicMode" data-mode="basic">
+            <i data-lucide="zap"></i>
+            <span>Basic</span>
+          </button>
+          <button class="mode-tab" id="btnAdvanceMode" data-mode="advance">
+            <i data-lucide="sliders"></i>
+            <span>Advanced</span>
+          </button>
+        </div>
+
+        <div class="input-group">
+          <label for="qrText">
+            <span>Enter URL or Text</span>
+            <span class="required">*</span>
+          </label>
+          <div class="input-wrapper">
+            <i data-lucide="link" class="input-icon"></i>
+            <input type="text" id="qrText" placeholder="https://example.com" autofocus autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Accordion Options wrapped in advanced container -->
+        <div id="advancedOptions" class="hidden">
+          <div class="accordion">
+          <!-- Section 1: Colors & Style -->
+          <div class="accordion-item active">
+            <button class="accordion-trigger" aria-expanded="true">
+              <span class="trigger-title">
+                <i data-lucide="palette"></i>
+                Colors & Appearance
+              </span>
+              <i data-lucide="chevron-down" class="chevron"></i>
+            </button>
+            <div class="accordion-content">
+              <div class="color-pickers-grid">
+                <div class="color-picker-group">
+                  <label for="fgColor">Foreground Color</label>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="fgColor" value="#0f172a">
+                    <input type="text" id="fgColorText" value="#0F172A" maxlength="7">
+                  </div>
+                </div>
+                <div class="color-picker-group">
+                  <label for="bgColor">Background Color</label>
+                  <div class="color-input-wrapper">
+                    <input type="color" id="bgColor" value="#ffffff">
+                    <input type="text" id="bgColorText" value="#FFFFFF" maxlength="7">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Logo Integration -->
+          <div class="accordion-item">
+            <button class="accordion-trigger" aria-expanded="false">
+              <span class="trigger-title">
+                <i data-lucide="image"></i>
+                Logo Overlay (Premium)
+              </span>
+              <i data-lucide="chevron-down" class="chevron"></i>
+            </button>
+            <div class="accordion-content">
+              <div class="toggle-group">
+                <label for="enableLogo">Enable Center Logo</label>
+                <label class="switch">
+                  <input type="checkbox" id="enableLogo">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div id="logoUploadSection" class="disabled-opacity">
+                <div class="drag-drop-zone" id="dropZone">
+                  <i data-lucide="upload-cloud" class="upload-icon"></i>
+                  <p class="upload-text">Drag & drop your logo here, or <span>browse</span></p>
+                  <p class="upload-hint">Supports PNG, JPG, SVG (Max 1MB)</p>
+                  <input type="file" id="logoFile" accept="image/*" class="file-input">
+                </div>
+                
+                <div id="logoPreviewContainer" class="logo-preview-row hidden">
+                  <div class="logo-preview-wrapper">
+                    <img id="logoPreview" src="" alt="Logo Preview">
+                    <button id="removeLogo" class="remove-btn" title="Remove logo">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+                  <div class="logo-name-info">
+                    <span id="logoFileName" class="file-name">logo.png</span>
+                    <span id="logoFileSize" class="file-size">124 KB</span>
+                  </div>
+                </div>
+
+                <div class="slider-group">
+                  <div class="slider-header">
+                    <label for="logoSize">Logo Size</label>
+                    <span id="logoSizeVal">20%</span>
+                  </div>
+                  <input type="range" id="logoSize" min="10" max="30" value="20" class="range-slider">
+                  <span class="range-hint">Values above 20% require High Error Correction for reliable scanning.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Advanced & Export -->
+          <div class="accordion-item">
+            <button class="accordion-trigger" aria-expanded="false">
+              <span class="trigger-title">
+                <i data-lucide="settings"></i>
+                Advanced Settings
+              </span>
+              <i data-lucide="chevron-down" class="chevron"></i>
+            </button>
+            <div class="accordion-content">
+              <div class="advanced-grid">
+                <div class="input-group">
+                  <div class="slider-header">
+                    <label for="qrSize">QR Code Size (Resolution)</label>
+                    <span id="qrSizeVal">512 px</span>
+                  </div>
+                  <input type="range" id="qrSize" min="256" max="1024" step="64" value="512" class="range-slider">
+                </div>
+
+                <div class="input-group">
+                  <label for="errorCorrection">Error Correction Level</label>
+                  <select id="errorCorrection" class="custom-select">
+                    <option value="L">L (7% Recovery - Standard)</option>
+                    <option value="M">M (15% Recovery - Medium)</option>
+                    <option value="Q">Q (25% Recovery - High Quality)</option>
+                    <option value="H" selected>H (30% Recovery - Recommended for logos)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Live Preview & Actions -->
+      <section class="preview-card glass-panel">
+        <div class="card-header">
+          <i data-lucide="eye" class="header-icon"></i>
+          <h2>Live Preview</h2>
+        </div>
+
+        <div class="preview-display">
+          <div class="qr-box" id="qrBox">
+            <!-- Canvas is generated here by JavaScript -->
+            <div id="qrPlaceholder" class="qr-placeholder-content">
+              <div class="qr-icon-large">
+                <i data-lucide="qr-code"></i>
+              </div>
+              <p>Your premium QR Code will appear here instantly as you type.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-actions">
+          <div class="download-button-group">
+            <button id="downloadPng" class="btn btn-primary" disabled>
+              <i data-lucide="download"></i>
+              <span>Download PNG</span>
+            </button>
+            <button id="downloadJpeg" class="btn btn-secondary" disabled>
+              <i data-lucide="download"></i>
+              <span>Download JPG</span>
+            </button>
+          </div>
+          
+          <div class="quick-actions">
+            <button id="copyImage" class="btn btn-icon" title="Copy QR Code Image to Clipboard" disabled>
+              <i data-lucide="copy"></i>
+              <span>Copy Image</span>
+            </button>
+            <button id="copyLink" class="btn btn-icon" title="Copy Text/URL" disabled>
+              <i data-lucide="clipboard"></i>
+              <span>Copy Text</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- History Panel -->
+    <section class="history-panel glass-panel">
+      <div class="history-header">
+        <div class="title-with-count">
+          <i data-lucide="history"></i>
+          <h2>Recent Generations</h2>
+          <span class="badge" id="historyCount">0</span>
+        </div>
+        <button id="clearHistory" class="btn btn-danger-text hidden">
+          <i data-lucide="trash-2"></i>
+          <span>Clear All</span>
+        </button>
+      </div>
+      
+      <div class="history-grid" id="historyGrid">
+        <!-- Empty State -->
+        <div class="history-empty" id="historyEmpty">
+          <p>No recent QR codes generated yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+      <i data-lucide="check-circle" class="toast-icon"></i>
+      <span id="toastMsg" class="toast-message">Copied to clipboard!</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 QR Generator. Built for speed and visual excellence.</p>
+    </footer>
+  </div>
+
+  <!-- Local QR Code Library (Bundled via esbuild) -->
+  <script src="qrcode.min.js"></script>
+  <!-- Application Logic -->
+  <script src="script.js"></script>
+</body>
+</html>
