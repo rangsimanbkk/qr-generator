@@ -44,6 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAdvanceMode = document.getElementById('btnAdvanceMode');
   const advancedOptions = document.getElementById('advancedOptions');
 
+  // Bottom Text Elements
+  const qrBottomTextInput = document.getElementById('qrBottomText');
+  const bottomTextSizeInput = document.getElementById('bottomTextSize');
+  const bottomTextSizeValSpan = document.getElementById('bottomTextSizeVal');
+  const bottomTextColorInput = document.getElementById('bottomTextColor');
+  const bottomTextColorTextInput = document.getElementById('bottomTextColorText');
+
   // --- State Variables ---
   let logoImage = null;
   let logoFileObject = null;
@@ -134,6 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   fgColorInput.addEventListener('input', (e) => {
     fgColorTextInput.value = e.target.value.toUpperCase();
+    if (bottomTextColorInput && !bottomTextColorInput.dataset.customized) {
+      bottomTextColorInput.value = e.target.value;
+      bottomTextColorTextInput.value = e.target.value.toUpperCase();
+    }
     generateQR();
   });
 
@@ -150,6 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (isValidHex(val)) {
       fgColorInput.value = val;
+      if (bottomTextColorInput && !bottomTextColorInput.dataset.customized) {
+        bottomTextColorInput.value = val;
+        bottomTextColorTextInput.value = val.toUpperCase();
+      }
       generateQR();
     }
   });
@@ -162,6 +177,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (isValidHex(val)) {
       bgColorInput.value = val;
+      generateQR();
+    }
+  });
+
+  // --- Bottom Text Handlers ---
+  qrBottomTextInput.addEventListener('input', () => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      generateQR();
+    }, 200);
+  });
+
+  bottomTextSizeInput.addEventListener('input', (e) => {
+    bottomTextSizeValSpan.textContent = `${e.target.value}%`;
+    generateQR();
+  });
+
+  bottomTextColorInput.addEventListener('input', (e) => {
+    bottomTextColorInput.dataset.customized = 'true';
+    bottomTextColorTextInput.value = e.target.value.toUpperCase();
+    generateQR();
+  });
+
+  bottomTextColorTextInput.addEventListener('input', (e) => {
+    let val = e.target.value;
+    if (!val.startsWith('#') && val.length > 0) {
+      val = '#' + val;
+      bottomTextColorTextInput.value = val;
+    }
+    if (isValidHex(val)) {
+      bottomTextColorInput.dataset.customized = 'true';
+      bottomTextColorInput.value = val;
       generateQR();
     }
   });
@@ -292,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Set configuration based on mode
-    let size, fgColor, bgColor, errorLevel, drawLogo;
+    let size, fgColor, bgColor, errorLevel, drawLogo, bottomText, bottomTextSize, bottomTextColor;
 
     if (currentMode === 'basic') {
       size = 512;
@@ -300,12 +347,18 @@ document.addEventListener('DOMContentLoaded', () => {
       bgColor = '#ffffff';
       errorLevel = 'M';
       drawLogo = false;
+      bottomText = '';
+      bottomTextSize = 5.5;
+      bottomTextColor = '#0f172a';
     } else {
       size = parseInt(qrSizeInput.value, 10);
       fgColor = fgColorInput.value;
       bgColor = bgColorInput.value;
       errorLevel = errorCorrectionSelect.value;
       drawLogo = enableLogoCheckbox.checked && logoImage;
+      bottomText = qrBottomTextInput ? qrBottomTextInput.value.trim() : '';
+      bottomTextSize = bottomTextSizeInput ? parseFloat(bottomTextSizeInput.value) : 5.5;
+      bottomTextColor = bottomTextColorInput ? bottomTextColorInput.value : fgColor;
     }
     
     // Create temporary canvas at high res for drawing
@@ -333,11 +386,14 @@ document.addEventListener('DOMContentLoaded', () => {
         drawLogoOverlay(canvas, fgColor, bgColor);
       }
 
+      // Build final canvas (with bottom text if specified)
+      const finalCanvas = buildFinalCanvas(canvas, bottomText, size, bottomTextSize, bottomTextColor, bgColor);
+
       // Render to DOM
       qrBox.innerHTML = '';
-      qrBox.appendChild(canvas);
+      qrBox.appendChild(finalCanvas);
       qrBox.classList.add('active', 'has-qr');
-      currentCanvas = canvas;
+      currentCanvas = finalCanvas;
 
       // Enable actions
       downloadPngBtn.disabled = false;
@@ -346,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
       copyLinkBtn.disabled = false;
 
       // Queue adding to history
-      queueHistorySave(text, canvas, fgColor, bgColor);
+      queueHistorySave(text, finalCanvas, fgColor, bgColor, bottomText, bottomTextSize, bottomTextColor);
     });
   }
 
@@ -403,6 +459,51 @@ document.addEventListener('DOMContentLoaded', () => {
     
     ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
     ctx.restore();
+  }
+
+  function buildFinalCanvas(qrCanvas, labelText, size, textSizePercent, textColor, bgColor) {
+    if (!labelText) {
+      return qrCanvas;
+    }
+
+    const finalCanvas = document.createElement('canvas');
+    const fontSize = Math.max(14, Math.round(size * (textSizePercent / 100)));
+    const topPadding = Math.round(size * 0.025);
+    const bottomPadding = Math.round(size * 0.045);
+    const textLineHeight = Math.round(fontSize * 1.3);
+    const extraHeight = topPadding + textLineHeight + bottomPadding;
+
+    finalCanvas.width = size;
+    finalCanvas.height = size + extraHeight;
+
+    const ctx = finalCanvas.getContext('2d');
+
+    // Fill entire background with bgColor
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+    // Draw the QR code (and logo)
+    ctx.drawImage(qrCanvas, 0, 0);
+
+    // Draw text centered
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const maxAllowedWidth = size - Math.round(size * 0.08);
+    let computedFontSize = fontSize;
+    ctx.font = `600 ${computedFontSize}px 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+    let measured = ctx.measureText(labelText).width;
+
+    if (measured > maxAllowedWidth) {
+      computedFontSize = Math.max(12, Math.floor(fontSize * (maxAllowedWidth / measured)));
+      ctx.font = `600 ${computedFontSize}px 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+    }
+
+    const textY = size + topPadding + (textLineHeight / 2);
+    ctx.fillText(labelText, size / 2, textY);
+
+    return finalCanvas;
   }
 
   // --- Downloader & Action Logic ---
@@ -519,22 +620,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- History Manager ---
-  function queueHistorySave(text, canvas, fgColor, bgColor) {
+  function queueHistorySave(text, canvas, fgColor, bgColor, bottomText, bottomTextSize, bottomTextColor) {
     clearTimeout(historySaveTimeout);
     historySaveTimeout = setTimeout(() => {
-      saveToHistory(text, canvas, fgColor, bgColor);
+      saveToHistory(text, canvas, fgColor, bgColor, bottomText, bottomTextSize, bottomTextColor);
     }, 1500); // Wait until stable for 1.5s
   }
 
-  function saveToHistory(text, canvas, fgColor, bgColor) {
+  function saveToHistory(text, canvas, fgColor, bgColor, bottomText, bottomTextSize, bottomTextColor) {
     // Generate small thumbnail data url (approx 80px)
     const thumbCanvas = document.createElement('canvas');
-    thumbCanvas.width = 120;
-    thumbCanvas.height = 120;
+    const thumbWidth = 120;
+    const thumbHeight = Math.round(120 * (canvas.height / canvas.width));
+    thumbCanvas.width = thumbWidth;
+    thumbCanvas.height = thumbHeight;
     const thumbCtx = thumbCanvas.getContext('2d');
     
     // Draw current canvas scaled down
-    thumbCtx.drawImage(canvas, 0, 0, 120, 120);
+    thumbCtx.drawImage(canvas, 0, 0, thumbWidth, thumbHeight);
     const thumbDataUrl = thumbCanvas.toDataURL('image/png');
 
     const historyItem = {
@@ -551,7 +654,10 @@ document.addEventListener('DOMContentLoaded', () => {
       logoData: currentMode === 'basic' ? null : (logoPreview.src || null),
       logoName: currentMode === 'basic' ? '' : (logoFileNameSpan.textContent || 'logo.png'),
       logoSizeText: currentMode === 'basic' ? '' : (logoFileSizeSpan.textContent || ''),
-      errorCorrection: currentMode === 'basic' ? 'M' : errorCorrectionSelect.value
+      errorCorrection: currentMode === 'basic' ? 'M' : errorCorrectionSelect.value,
+      bottomText: currentMode === 'basic' ? '' : (bottomText || ''),
+      bottomTextSize: currentMode === 'basic' ? 5.5 : (bottomTextSize || 5.5),
+      bottomTextColor: currentMode === 'basic' ? fgColor : (bottomTextColor || fgColor)
     };
 
     // Remove duplicates
@@ -660,11 +766,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     errorCorrectionSelect.value = item.errorCorrection || 'H';
 
+    qrBottomTextInput.value = item.bottomText || '';
+    if (item.bottomTextSize) {
+      bottomTextSizeInput.value = item.bottomTextSize;
+      bottomTextSizeValSpan.textContent = `${item.bottomTextSize}%`;
+    } else {
+      bottomTextSizeInput.value = '5.5';
+      bottomTextSizeValSpan.textContent = '5.5%';
+    }
+    if (item.bottomTextColor) {
+      bottomTextColorInput.value = item.bottomTextColor;
+      bottomTextColorTextInput.value = item.bottomTextColor.toUpperCase();
+      bottomTextColorInput.dataset.customized = 'true';
+    } else {
+      bottomTextColorInput.value = item.fgColor;
+      bottomTextColorTextInput.value = item.fgColor.toUpperCase();
+      delete bottomTextColorInput.dataset.customized;
+    }
+
     // Switch mode based on history item customization
     const hasCustomColors = item.fgColor !== '#0f172a' || item.bgColor !== '#ffffff';
     const hasLogoEnabled = !!item.enableLogo;
+    const hasBottomText = !!item.bottomText;
     
-    if (hasCustomColors || hasLogoEnabled || item.qrSize !== '512' || item.errorCorrection !== 'M') {
+    if (hasCustomColors || hasLogoEnabled || hasBottomText || item.qrSize !== '512' || item.errorCorrection !== 'M') {
       currentMode = 'advance';
       btnAdvanceMode.classList.add('active');
       btnBasicMode.classList.remove('active');
@@ -761,12 +886,14 @@ document.addEventListener('DOMContentLoaded', () => {
           ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
           ctx.restore();
 
-          // Trigger download
-          triggerDownload(canvas, item.text);
+          // Build final canvas (with bottom text if any) and trigger download
+          const finalCanvas = buildFinalCanvas(canvas, item.bottomText || '', size, item.bottomTextSize || 5.5, item.bottomTextColor || item.fgColor, item.bgColor);
+          triggerDownload(finalCanvas, item.text);
         };
         logoImg.src = item.logoData;
       } else {
-        triggerDownload(canvas, item.text);
+        const finalCanvas = buildFinalCanvas(canvas, item.bottomText || '', size, item.bottomTextSize || 5.5, item.bottomTextColor || item.fgColor, item.bgColor);
+        triggerDownload(finalCanvas, item.text);
       }
     });
   }
